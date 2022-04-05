@@ -84,7 +84,7 @@ public final class BoundingBox implements Shape {
     }
 
     @Override
-    public boolean isOccluded(Shape shape, BlockFace face) {
+    public boolean isOccluded(@NotNull Shape shape, @NotNull BlockFace face) {
         return false;
     }
 

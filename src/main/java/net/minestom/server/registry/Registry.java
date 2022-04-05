@@ -203,7 +203,7 @@ public final class Registry {
             {
                 final String collision = main.getString("collisionShape");
                 final String occlusion = main.getString("occlusionShape");
-                this.shape = CollisionUtils.parseBlockShape(collision, occlusion, this.materialSupplier);
+                this.shape = CollisionUtils.parseBlockShape(collision, occlusion, this);
             }
         }
 

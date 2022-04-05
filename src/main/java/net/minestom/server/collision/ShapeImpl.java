@@ -4,19 +4,17 @@ import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleList;
 import net.minestom.server.coordinate.Point;
 import net.minestom.server.coordinate.Vec;
+import net.minestom.server.instance.block.Block;
 import net.minestom.server.instance.block.BlockFace;
-import net.minestom.server.item.Material;
+import net.minestom.server.registry.Registry;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 final class ShapeImpl implements Shape {
-    private record Rectangle(double x1, double y1, double x2, double y2) {};
-
     private static final Pattern PATTERN = Pattern.compile("\\d.\\d{1,3}", Pattern.MULTILINE);
     private final BoundingBox[] collisionBoundingBoxes;
     private final Point relativeStart, relativeEnd;
@@ -26,12 +24,13 @@ final class ShapeImpl implements Shape {
     private final byte blockOcclusion;
     private final byte airOcclusion;
 
-    private final Supplier<Material> block;
+    private final Registry.BlockEntry blockEntry;
+    private Block block;
 
-    private ShapeImpl(BoundingBox[] collisionBoundingBoxes, BoundingBox[] occlusionBoundingBoxes, Supplier<Material> block) {
+    private ShapeImpl(BoundingBox[] collisionBoundingBoxes, BoundingBox[] occlusionBoundingBoxes, Registry.BlockEntry blockEntry) {
         this.collisionBoundingBoxes = collisionBoundingBoxes;
         this.occlusionBoundingBoxes = occlusionBoundingBoxes;
-        this.block = block;
+        this.blockEntry = blockEntry;
 
         // Find bounds of collision
         {
@@ -54,8 +53,7 @@ final class ShapeImpl implements Shape {
         byte airFaces = 0;
         byte fullFaces = 0;
         for (BlockFace f : BlockFace.values()) {
-            byte res = isFaceCovered(computeOcclusionSet(f));
-
+            final byte res = isFaceCovered(computeOcclusionSet(f));
             airFaces |= ((res == 0) ? 0b1 : 0b0) << (byte) f.ordinal();
             fullFaces |= ((res == 2) ? 0b1 : 0b0) << (byte) f.ordinal();
         }
@@ -71,7 +69,6 @@ final class ShapeImpl implements Shape {
             double newVal = Double.parseDouble(matcher.group());
             vals.add(newVal);
         }
-
         final int count = vals.size() / 6;
         BoundingBox[] boundingBoxes = new BoundingBox[count];
         for (int i = 0; i < count; ++i) {
@@ -89,76 +86,103 @@ final class ShapeImpl implements Shape {
             assert bb.minZ() == minZ;
             boundingBoxes[i] = bb;
         }
-
         return boundingBoxes;
-    }
-
-    private static Rectangle clipRectangle(Rectangle covering, Rectangle toCover) {
-        final double x1 = Math.max(covering.x1(), toCover.x1());
-        final double y1 = Math.max(covering.y1(), toCover.y1());
-        final double x2 = Math.min(covering.x2(), toCover.x2());
-        final double y2 = Math.min(covering.y2(), toCover.y2());
-        return new Rectangle(x1, y1, x2, y2);
-    }
-
-    private static List<Rectangle> getRemaining (Rectangle covering, Rectangle toCover) {
-        List<Rectangle> remaining = new ArrayList<>();
-        covering = clipRectangle(covering, toCover);
-
-        // Up
-        if (covering.y1() > toCover.y1()) {
-            remaining.add(new Rectangle(toCover.x1(), toCover.y1(), toCover.x2(), covering.y1()));
-        }
-
-        // Down
-        if (covering.y2() < toCover.y2()) {
-            remaining.add(new Rectangle(toCover.x1(), covering.y2(), toCover.x2(), toCover.y2()));
-        }
-
-        // Left
-        if (covering.x1() > toCover.x1()) {
-            remaining.add(new Rectangle(toCover.x1(), covering.y1(), covering.x1(), covering.y2()));
-        }
-
-        //Right
-        if (covering.x2() < toCover.x2()) {
-            remaining.add(new Rectangle(covering.x2(), covering.y1(), toCover.x2(), covering.y2()));
-        }
-
-        return remaining;
     }
 
     /**
      * Computes the occlusion for a given face.
+     *
      * @param covering The rectangle set to check for covering.
      * @return 0 if face is not covered, 1 if face is covered partially, 2 if face is fully covered.
      */
-    public static byte isFaceCovered (List<Rectangle> covering) {
-        Rectangle r = new Rectangle(0, 0, 1, 1);
-
+    public static byte isFaceCovered(List<Rectangle> covering) {
         if (covering.isEmpty()) return 0;
-
+        Rectangle r = new Rectangle(0, 0, 1, 1);
         List<Rectangle> toCover = new ArrayList<>();
         toCover.add(r);
-
         for (Rectangle rect : covering) {
             List<Rectangle> nextCovering = new ArrayList<>();
-
             for (Rectangle toCoverRect : toCover) {
                 List<Rectangle> remaining = getRemaining(rect, toCoverRect);
                 nextCovering.addAll(remaining);
             }
-
             toCover = nextCovering;
             if (toCover.isEmpty()) return 2;
         }
-
         return 1;
+    }
+
+    static ShapeImpl parseBlockFromRegistry(String collision, String occlusion, Registry.BlockEntry blockEntry) {
+        return new ShapeImpl(parseRegistryBoundingBoxString(collision), parseRegistryBoundingBoxString(occlusion), blockEntry);
+    }
+
+    @Override
+    public @NotNull Point relativeStart() {
+        return relativeStart;
+    }
+
+    @Override
+    public @NotNull Point relativeEnd() {
+        return relativeEnd;
+    }
+
+    @Override
+    public boolean isOccluded(@NotNull Shape shape, @NotNull BlockFace face) {
+        final ShapeImpl shapeImpl = ((ShapeImpl) shape);
+
+        final boolean hasAirOcclusion = (((airOcclusion >> face.ordinal()) & 1) == 1);
+        final boolean hasBlockOcclusion = (((blockOcclusion >> face.ordinal()) & 1) == 1);
+        final boolean hasBlockOcclusionOther = ((shapeImpl.blockOcclusion >> face.getOppositeFace().ordinal()) & 1) == 1;
+        final boolean hasAirOcclusionOther = ((shapeImpl.airOcclusion >> face.getOppositeFace().ordinal()) & 1) == 1;
+        if (blockEntry.lightEmission() > 0) return hasBlockOcclusionOther;
+
+        // If either face is full, return true
+        if (hasBlockOcclusion || hasBlockOcclusionOther) return true;
+
+        // If a single face is air, return false
+        if (hasAirOcclusion || hasAirOcclusionOther) return false;
+
+        // Comparing two partial faces. Computation needed
+        List<Rectangle> allRectangles = shapeImpl.computeOcclusionSet(face.getOppositeFace());
+        allRectangles.addAll(computeOcclusionSet(face));
+        return isFaceCovered(allRectangles) == 2;
+    }
+
+    @Override
+    public boolean intersectBox(@NotNull Point position, @NotNull BoundingBox boundingBox) {
+        for (BoundingBox blockSection : collisionBoundingBoxes) {
+            if (boundingBox.intersectBox(position, blockSection)) return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean intersectBoxSwept(@NotNull Point rayStart, @NotNull Point rayDirection, @NotNull Point shapePos, @NotNull BoundingBox moving, @NotNull SweepResult finalResult) {
+        boolean hitBlock = false;
+        for (BoundingBox blockSection : collisionBoundingBoxes) {
+            // Fast check to see if a collision happens
+            // Uses minkowski sum
+            if (!RayUtils.BoundingBoxIntersectionCheck(moving, rayStart, rayDirection, blockSection, shapePos))
+                continue;
+            // Update final result if the temp result collision is sooner than the current final result
+            if (RayUtils.SweptAABB(moving, rayStart, rayDirection, blockSection, shapePos, finalResult)) {
+                finalResult.collidedShapePosition = shapePos;
+                finalResult.collidedShape = this;
+                finalResult.blockType = block();
+            }
+            hitBlock = true;
+        }
+        return hitBlock;
+    }
+
+    private Block block() {
+        Block block = this.block;
+        if (block == null) this.block = block = Block.fromStateId((short) blockEntry.stateId());
+        return block;
     }
 
     private List<Rectangle> computeOcclusionSet(BlockFace face) {
         List<Rectangle> rSet = new ArrayList<>();
-
         for (BoundingBox boundingBox : this.occlusionBoundingBoxes) {
             switch (face) {
                 case NORTH -> // negative Z
@@ -193,72 +217,39 @@ final class ShapeImpl implements Shape {
                 }
             }
         }
-
         return rSet;
     }
 
-    static ShapeImpl parseBlockFromRegistry(String collision, String occlusion, Supplier<Material> block) {
-        return new ShapeImpl(parseRegistryBoundingBoxString(collision), parseRegistryBoundingBoxString(occlusion), block);
-    }
-
-    @Override
-    public @NotNull Point relativeStart() {
-        return relativeStart;
-    }
-
-    @Override
-    public @NotNull Point relativeEnd() {
-        return relativeEnd;
-    }
-
-    @Override
-    public boolean isOccluded(Shape shape, BlockFace face) {
-        ShapeImpl otherShape = ((ShapeImpl)shape);
-
-        boolean hasAirOcclusion = (((airOcclusion >> face.ordinal()) & 1) == 1);
-        boolean hasBlockOcclusion = (((blockOcclusion >> face.ordinal()) & 1) == 1);
-        boolean hasBlockOcclusionOther = ((otherShape.blockOcclusion >> face.getOppositeFace().ordinal()) & 1) == 1;
-        boolean hasAirOcclusionOther = ((otherShape.airOcclusion >> face.getOppositeFace().ordinal()) & 1) == 1;
-
-        if (this.block.get() == null) return hasBlockOcclusionOther;
-        if (this.block.get().block().registry().lightEmission() > 0) return hasBlockOcclusionOther;
-
-        // If either face is full, return true
-        if (hasBlockOcclusion || hasBlockOcclusionOther) return true;
-
-        // If a single face is air, return false
-        if (hasAirOcclusion || hasAirOcclusionOther) return false;
-
-        // Comparing two partial faces. Computation needed
-        List<Rectangle> allRectangles = ((ShapeImpl)shape).computeOcclusionSet(face.getOppositeFace());
-        allRectangles.addAll(computeOcclusionSet(face));
-        return isFaceCovered(allRectangles) == 2;
-    }
-
-    @Override
-    public boolean intersectBox(@NotNull Point position, @NotNull BoundingBox boundingBox) {
-        for (BoundingBox blockSection : collisionBoundingBoxes) {
-            if (boundingBox.intersectBox(position, blockSection)) return true;
+    private static List<Rectangle> getRemaining(Rectangle covering, Rectangle toCover) {
+        List<Rectangle> remaining = new ArrayList<>();
+        covering = clipRectangle(covering, toCover);
+        // Up
+        if (covering.y1() > toCover.y1()) {
+            remaining.add(new Rectangle(toCover.x1(), toCover.y1(), toCover.x2(), covering.y1()));
         }
-        return false;
+        // Down
+        if (covering.y2() < toCover.y2()) {
+            remaining.add(new Rectangle(toCover.x1(), covering.y2(), toCover.x2(), toCover.y2()));
+        }
+        // Left
+        if (covering.x1() > toCover.x1()) {
+            remaining.add(new Rectangle(toCover.x1(), covering.y1(), covering.x1(), covering.y2()));
+        }
+        //Right
+        if (covering.x2() < toCover.x2()) {
+            remaining.add(new Rectangle(covering.x2(), covering.y1(), toCover.x2(), covering.y2()));
+        }
+        return remaining;
     }
 
-    @Override
-    public boolean intersectBoxSwept(@NotNull Point rayStart, @NotNull Point rayDirection, @NotNull Point shapePos, @NotNull BoundingBox moving, @NotNull SweepResult finalResult) {
-        boolean hitBlock = false;
-        for (BoundingBox blockSection : collisionBoundingBoxes) {
-            // Fast check to see if a collision happens
-            // Uses minkowski sum
-            if (!RayUtils.BoundingBoxIntersectionCheck(moving, rayStart, rayDirection, blockSection, shapePos))
-                continue;
-            // Update final result if the temp result collision is sooner than the current final result
-            if (RayUtils.SweptAABB(moving, rayStart, rayDirection, blockSection, shapePos, finalResult)) {
-                finalResult.collidedShapePosition = shapePos;
-                finalResult.collidedShape = this;
-                finalResult.blockType = block.get().block();
-            }
-            hitBlock = true;
-        }
-        return hitBlock;
+    private static Rectangle clipRectangle(Rectangle covering, Rectangle toCover) {
+        final double x1 = Math.max(covering.x1(), toCover.x1());
+        final double y1 = Math.max(covering.y1(), toCover.y1());
+        final double x2 = Math.min(covering.x2(), toCover.x2());
+        final double y2 = Math.min(covering.y2(), toCover.y2());
+        return new Rectangle(x1, y1, x2, y2);
+    }
+
+    private record Rectangle(double x1, double y1, double x2, double y2) {
     }
 }

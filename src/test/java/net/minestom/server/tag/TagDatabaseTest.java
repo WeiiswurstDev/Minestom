@@ -3,7 +3,6 @@ package net.minestom.server.tag;
 import org.jglrxavpok.hephaistos.nbt.NBT;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -14,8 +13,8 @@ public class TagDatabaseTest {
     @Test
     public void empty() {
         TagDatabase db = createDB();
-        var query = TagDatabase.Query.of(List.of(TagDatabase.Filter.eq(Tag.String("key"), "value")),
-                List.of(), Integer.MAX_VALUE);
+        var query = TagDatabase.Query.builder()
+                .filter(TagDatabase.Filter.eq(Tag.String("key"), "value")).build();
         var result = db.find(query);
         assertTrue(result.isEmpty());
     }

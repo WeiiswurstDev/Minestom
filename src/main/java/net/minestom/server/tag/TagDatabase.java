@@ -15,17 +15,17 @@ public interface TagDatabase {
     @NotNull List<@NotNull NBTCompound> find(@NotNull Query query);
 
     default <T> void updateSingle(@NotNull Tag<T> tag, @NotNull T value, @NotNull TagHandler handler) {
-        final Query query = Query.of(List.of(Filter.eq(tag, value)), List.of(), 1);
+        final Query query = new TagDatabaseImpl.Query(List.of(Filter.eq(tag, value)), List.of(), 1);
         update(query, handler);
     }
 
-    default @NotNull List<@NotNull NBTCompound> find(@NotNull List<@NotNull Filter> queries) {
-        final Query query = Query.of(queries, List.of(), Integer.MAX_VALUE);
+    default @NotNull List<@NotNull NBTCompound> find(@NotNull List<@NotNull Filter> filters) {
+        final Query query = new TagDatabaseImpl.Query(filters, List.of(), -1);
         return find(query);
     }
 
-    default Optional<NBTCompound> findFirst(@NotNull List<@NotNull Filter> queries) {
-        final Query query = Query.of(queries, List.of(), 1);
+    default Optional<NBTCompound> findFirst(@NotNull List<@NotNull Filter> filters) {
+        final Query query = new TagDatabaseImpl.Query(filters, List.of(), 1);
         return find(query).stream().findFirst();
     }
 
@@ -34,8 +34,8 @@ public interface TagDatabase {
     }
 
     sealed interface Query permits TagDatabaseImpl.Query {
-        static Query of(@NotNull List<@NotNull Filter> filters, @NotNull List<@NotNull Sorter> sorters, int limit) {
-            return new TagDatabaseImpl.Query(filters, sorters, limit);
+        static @NotNull Builder builder() {
+            return new TagDatabaseImpl.QueryBuilder();
         }
 
         @NotNull List<@NotNull Filter> filters();
@@ -43,6 +43,20 @@ public interface TagDatabase {
         @NotNull List<@NotNull Sorter> sorters();
 
         int limit();
+
+        sealed interface Builder permits TagDatabaseImpl.QueryBuilder {
+            @NotNull Builder filters(@NotNull List<@NotNull Filter> filters);
+
+            @NotNull Builder filter(@NotNull Filter filter);
+
+            @NotNull Builder sorters(@NotNull List<@NotNull Sorter> sorters);
+
+            @NotNull Builder sorter(@NotNull Sorter sorter);
+
+            @NotNull Builder limit(int limit);
+
+            @NotNull Query build();
+        }
     }
 
     sealed interface Filter permits Filter.Eq {

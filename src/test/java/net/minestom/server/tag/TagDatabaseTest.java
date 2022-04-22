@@ -128,6 +128,20 @@ public class TagDatabaseTest {
         assertEquals(NBT.Compound(Map.of("number", NBT.Int(10))), result.get(0));
     }
 
+    @Test
+    public void delete() {
+        TagDatabase db = createDB();
+        var tag = Tag.Integer("number");
+        var compound = NBT.Compound(Map.of("number", NBT.Int(5)));
+        var query = TagDatabase.Query.builder().filter(TagDatabase.Filter.eq(tag, 5)).build();
+
+        db.insert(TagHandler.fromCompound(compound));
+        db.delete(query);
+
+        var result = db.find(query);
+        assertTrue(result.isEmpty());
+    }
+
     private TagDatabase createDB() {
         throw new UnsupportedOperationException("Not supported yet.");
     }

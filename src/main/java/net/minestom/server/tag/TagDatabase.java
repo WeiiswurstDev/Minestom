@@ -19,6 +19,8 @@ public interface TagDatabase {
 
     <T> void replace(@NotNull Query query, @NotNull Tag<T> tag, @NotNull UnaryOperator<T> operator);
 
+    void delete(@NotNull Query query);
+
     default <T> void replaceConstant(@NotNull Query query, @NotNull Tag<T> tag, @Nullable T value) {
         replace(query, tag, t -> value);
     }

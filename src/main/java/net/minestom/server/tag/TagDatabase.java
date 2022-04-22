@@ -18,7 +18,11 @@ public interface TagDatabase {
         return new TagDatabaseImpl.QueryBuilder();
     }
 
-    void insert(@NotNull TagHandler handler);
+    static @NotNull Sorter sort(@NotNull Tag<?> tag, SortOrder order) {
+        return new TagDatabaseImpl.Sorter(tag, order);
+    }
+
+    void insert(@NotNull TagHandler... handler);
 
     void update(@NotNull Query query, @NotNull TagHandler handler);
 
@@ -87,7 +91,7 @@ public interface TagDatabase {
         }
     }
 
-    interface Sorter {
+    sealed interface Sorter permits TagDatabaseImpl.Sorter {
         @NotNull Tag<?> tag();
 
         @NotNull SortOrder sortOrder();

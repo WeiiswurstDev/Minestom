@@ -59,4 +59,7 @@ final class TagDatabaseImpl {
         record Eq<T>(Tag<T> tag, T value) implements TagDatabase.Filter.Eq<T> {
         }
     }
+
+    record Sorter(Tag<?> tag, TagDatabase.SortOrder sortOrder) implements TagDatabase.Sorter {
+    }
 }

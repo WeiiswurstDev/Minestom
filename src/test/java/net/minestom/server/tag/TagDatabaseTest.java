@@ -139,6 +139,22 @@ public class TagDatabaseTest {
         assertTrue(result.isEmpty());
     }
 
+    @Test
+    public void intSort() {
+        TagDatabase db = createDB();
+        var tag = Tag.Integer("number");
+        var compound1 = NBT.Compound(Map.of("number", NBT.Int(1)));
+        var compound2 = NBT.Compound(Map.of("number", NBT.Int(2)));
+        var compound3 = NBT.Compound(Map.of("number", NBT.Int(3)));
+        db.insert(TagHandler.fromCompound(compound2), TagHandler.fromCompound(compound3), TagHandler.fromCompound(compound1));
+
+        var ascending = TagDatabase.query().sorter(TagDatabase.sort(tag, TagDatabase.SortOrder.ASCENDING)).build();
+        assertEquals(List.of(compound1, compound2, compound3), db.find(ascending));
+
+        var descending = TagDatabase.query().sorter(TagDatabase.sort(tag, TagDatabase.SortOrder.DESCENDING)).build();
+        assertEquals(List.of(compound3, compound2, compound1), db.find(descending));
+    }
+
     private TagDatabase createDB() {
         throw new UnsupportedOperationException("Not supported yet.");
     }

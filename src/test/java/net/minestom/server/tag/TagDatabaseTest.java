@@ -3,6 +3,7 @@ package net.minestom.server.tag;
 import org.jglrxavpok.hephaistos.nbt.NBT;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -34,7 +35,7 @@ public class TagDatabaseTest {
 
         var query = TagDatabase.query()
                 .filter(TagDatabase.Filter.eq(tag, "value")).build();
-        assertEquals(List.of(compound1), db.find(query));
+        assertListEqualsIgnoreOrder(List.of(compound1), db.find(query));
     }
 
     @Test
@@ -51,7 +52,7 @@ public class TagDatabaseTest {
 
         var query = TagDatabase.query()
                 .filter(TagDatabase.Filter.eq(Tag.String("other"), "otherValue")).build();
-        assertEquals(List.of(compound1, compound2), db.find(query));
+        assertListEqualsIgnoreOrder(List.of(compound1, compound2), db.find(query));
     }
 
     @Test
@@ -68,7 +69,7 @@ public class TagDatabaseTest {
 
         var query = TagDatabase.query()
                 .filter(TagDatabase.Filter.eq(Tag.String("other").path("path"), "otherValue")).build();
-        assertEquals(List.of(compound1, compound2), db.find(query));
+        assertListEqualsIgnoreOrder(List.of(compound1, compound2), db.find(query));
     }
 
     @Test
@@ -153,6 +154,10 @@ public class TagDatabaseTest {
 
         var descending = TagDatabase.query().sorter(TagDatabase.sort(tag, TagDatabase.SortOrder.DESCENDING)).build();
         assertEquals(List.of(compound3, compound2, compound1), db.find(descending));
+    }
+
+    public static void assertListEqualsIgnoreOrder(List<?> expected, List<?> actual) {
+        assertEquals(new HashSet<>(expected), new HashSet<>(actual));
     }
 
     private TagDatabase createDB() {

@@ -7,9 +7,7 @@ import java.util.List;
 
 final class TagDatabaseImpl {
     record Query(List<TagDatabase.Filter> filters,
-                 List<TagDatabase.Sorter> sorters,
-                 int limit)
-            implements TagDatabase.Query {
+                 List<TagDatabase.Sorter> sorters, int limit) implements TagDatabase.Query {
         Query {
             filters = List.copyOf(filters);
             sorters = List.copyOf(sorters);

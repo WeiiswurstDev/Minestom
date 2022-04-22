@@ -2,6 +2,7 @@ package net.minestom.server.tag;
 
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Unmodifiable;
 import org.jglrxavpok.hephaistos.nbt.NBTCompound;
 
 import java.util.List;
@@ -9,6 +10,8 @@ import java.util.Optional;
 
 @ApiStatus.Experimental
 public interface TagDatabase {
+
+    void insert(@NotNull TagHandler handler);
 
     void update(@NotNull Query query, @NotNull TagHandler handler);
 
@@ -38,8 +41,10 @@ public interface TagDatabase {
             return new TagDatabaseImpl.QueryBuilder();
         }
 
+        @Unmodifiable
         @NotNull List<@NotNull Filter> filters();
 
+        @Unmodifiable
         @NotNull List<@NotNull Sorter> sorters();
 
         int limit();

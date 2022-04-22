@@ -1,7 +1,6 @@
 package net.minestom.server.tag;
 
 import org.jglrxavpok.hephaistos.nbt.NBT;
-import org.jglrxavpok.hephaistos.nbt.NBTCompound;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -107,11 +106,9 @@ public class TagDatabaseTest {
 
         db.insert(TagHandler.fromCompound(compound));
         db.replaceConstant(TagDatabase.Query.ALL, tag, null);
-        // TODO: should empty handlers be removed?
-
+        // Empty handlers must be removed
         var result = db.find(TagDatabase.Query.ALL);
-        assertEquals(1, result.size());
-        assertEquals(NBTCompound.EMPTY, result.get(0));
+        assertTrue(result.isEmpty());
     }
 
     @Test

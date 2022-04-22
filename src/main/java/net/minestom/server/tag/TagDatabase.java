@@ -2,11 +2,13 @@ package net.minestom.server.tag;
 
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 import org.jglrxavpok.hephaistos.nbt.NBTCompound;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.UnaryOperator;
 
 @ApiStatus.Experimental
 public interface TagDatabase {
@@ -14,6 +16,12 @@ public interface TagDatabase {
     void insert(@NotNull TagHandler handler);
 
     void update(@NotNull Query query, @NotNull TagHandler handler);
+
+    <T> void replace(@NotNull Query query, @NotNull Tag<T> tag, @NotNull UnaryOperator<T> operator);
+
+    default <T> void replaceConstant(@NotNull Query query, @NotNull Tag<T> tag, @Nullable T value) {
+        replace(query, tag, t -> value);
+    }
 
     @NotNull List<@NotNull NBTCompound> find(@NotNull Query query);
 
@@ -37,6 +45,8 @@ public interface TagDatabase {
     }
 
     sealed interface Query permits TagDatabaseImpl.Query {
+        Query ALL = new TagDatabaseImpl.Query(List.of(), List.of(), -1);
+
         static @NotNull Builder builder() {
             return new TagDatabaseImpl.QueryBuilder();
         }

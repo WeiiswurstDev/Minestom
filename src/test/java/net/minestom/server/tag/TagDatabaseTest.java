@@ -1,6 +1,7 @@
 package net.minestom.server.tag;
 
 import org.jglrxavpok.hephaistos.nbt.NBT;
+import org.jglrxavpok.hephaistos.nbt.NBTCompound;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -82,6 +83,49 @@ public class TagDatabaseTest {
 
         var result = db.findFirst(tag, "value");
         assertEquals(compound, result.get());
+    }
+
+    @Test
+    public void replaceConstant() {
+        TagDatabase db = createDB();
+        var tag = Tag.Integer("number");
+        var compound = NBT.Compound(Map.of("number", NBT.Int(5)));
+
+        db.insert(TagHandler.fromCompound(compound));
+        db.replaceConstant(TagDatabase.Query.ALL, tag, 10);
+
+        var result = db.find(TagDatabase.Query.ALL);
+        assertEquals(1, result.size());
+        assertEquals(NBT.Compound(Map.of("number", NBT.Int(10))), result.get(0));
+    }
+
+    @Test
+    public void replaceNull() {
+        TagDatabase db = createDB();
+        var tag = Tag.Integer("number");
+        var compound = NBT.Compound(Map.of("number", NBT.Int(5)));
+
+        db.insert(TagHandler.fromCompound(compound));
+        db.replaceConstant(TagDatabase.Query.ALL, tag, null);
+        // TODO: should empty handlers be removed?
+
+        var result = db.find(TagDatabase.Query.ALL);
+        assertEquals(1, result.size());
+        assertEquals(NBTCompound.EMPTY, result.get(0));
+    }
+
+    @Test
+    public void replaceOperator() {
+        TagDatabase db = createDB();
+        var tag = Tag.Integer("number");
+        var compound = NBT.Compound(Map.of("number", NBT.Int(5)));
+
+        db.insert(TagHandler.fromCompound(compound));
+        db.replace(TagDatabase.Query.ALL, tag, integer -> integer * 2);
+
+        var result = db.find(TagDatabase.Query.ALL);
+        assertEquals(1, result.size());
+        assertEquals(NBT.Compound(Map.of("number", NBT.Int(10))), result.get(0));
     }
 
     private TagDatabase createDB() {

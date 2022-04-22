@@ -14,7 +14,7 @@ public class TagDatabaseTest {
     @Test
     public void empty() {
         TagDatabase db = createDB();
-        var query = TagDatabase.Query.builder()
+        var query = TagDatabase.query()
                 .filter(TagDatabase.Filter.eq(Tag.String("key"), "value")).build();
         var result = db.find(query);
         assertTrue(result.isEmpty());
@@ -32,7 +32,7 @@ public class TagDatabaseTest {
         db.updateSingle(tag, "value", TagHandler.fromCompound(compound1));
         db.updateSingle(tag, "value2", TagHandler.fromCompound(compound2));
 
-        var query = TagDatabase.Query.builder()
+        var query = TagDatabase.query()
                 .filter(TagDatabase.Filter.eq(tag, "value")).build();
         assertEquals(List.of(compound1), db.find(query));
     }
@@ -49,7 +49,7 @@ public class TagDatabaseTest {
         db.updateSingle(tag, "value", TagHandler.fromCompound(compound1));
         db.updateSingle(tag, "value2", TagHandler.fromCompound(compound2));
 
-        var query = TagDatabase.Query.builder()
+        var query = TagDatabase.query()
                 .filter(TagDatabase.Filter.eq(Tag.String("other"), "otherValue")).build();
         assertEquals(List.of(compound1, compound2), db.find(query));
     }
@@ -66,7 +66,7 @@ public class TagDatabaseTest {
         db.updateSingle(tag, "value", TagHandler.fromCompound(compound1));
         db.updateSingle(tag, "value2", TagHandler.fromCompound(compound2));
 
-        var query = TagDatabase.Query.builder()
+        var query = TagDatabase.query()
                 .filter(TagDatabase.Filter.eq(Tag.String("other").path("path"), "otherValue")).build();
         assertEquals(List.of(compound1, compound2), db.find(query));
     }
@@ -91,9 +91,9 @@ public class TagDatabaseTest {
         var compound = NBT.Compound(Map.of("number", NBT.Int(5)));
 
         db.insert(TagHandler.fromCompound(compound));
-        db.replaceConstant(TagDatabase.Query.ALL, tag, 10);
+        db.replaceConstant(TagDatabase.QUERY_ALL, tag, 10);
 
-        var result = db.find(TagDatabase.Query.ALL);
+        var result = db.find(TagDatabase.QUERY_ALL);
         assertEquals(1, result.size());
         assertEquals(NBT.Compound(Map.of("number", NBT.Int(10))), result.get(0));
     }
@@ -105,9 +105,9 @@ public class TagDatabaseTest {
         var compound = NBT.Compound(Map.of("number", NBT.Int(5)));
 
         db.insert(TagHandler.fromCompound(compound));
-        db.replaceConstant(TagDatabase.Query.ALL, tag, null);
+        db.replaceConstant(TagDatabase.QUERY_ALL, tag, null);
         // Empty handlers must be removed
-        var result = db.find(TagDatabase.Query.ALL);
+        var result = db.find(TagDatabase.QUERY_ALL);
         assertTrue(result.isEmpty());
     }
 
@@ -118,9 +118,9 @@ public class TagDatabaseTest {
         var compound = NBT.Compound(Map.of("number", NBT.Int(5)));
 
         db.insert(TagHandler.fromCompound(compound));
-        db.replace(TagDatabase.Query.ALL, tag, integer -> integer * 2);
+        db.replace(TagDatabase.QUERY_ALL, tag, integer -> integer * 2);
 
-        var result = db.find(TagDatabase.Query.ALL);
+        var result = db.find(TagDatabase.QUERY_ALL);
         assertEquals(1, result.size());
         assertEquals(NBT.Compound(Map.of("number", NBT.Int(10))), result.get(0));
     }
@@ -130,7 +130,7 @@ public class TagDatabaseTest {
         TagDatabase db = createDB();
         var tag = Tag.Integer("number");
         var compound = NBT.Compound(Map.of("number", NBT.Int(5)));
-        var query = TagDatabase.Query.builder().filter(TagDatabase.Filter.eq(tag, 5)).build();
+        var query = TagDatabase.query().filter(TagDatabase.Filter.eq(tag, 5)).build();
 
         db.insert(TagHandler.fromCompound(compound));
         db.delete(query);

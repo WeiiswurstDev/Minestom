@@ -12,6 +12,11 @@ import java.util.function.UnaryOperator;
 
 @ApiStatus.Experimental
 public interface TagDatabase {
+    Query QUERY_ALL = new TagDatabaseImpl.Query(List.of(), List.of(), -1);
+
+    static @NotNull Query.Builder query() {
+        return new TagDatabaseImpl.QueryBuilder();
+    }
 
     void insert(@NotNull TagHandler handler);
 
@@ -47,12 +52,6 @@ public interface TagDatabase {
     }
 
     sealed interface Query permits TagDatabaseImpl.Query {
-        Query ALL = new TagDatabaseImpl.Query(List.of(), List.of(), -1);
-
-        static @NotNull Builder builder() {
-            return new TagDatabaseImpl.QueryBuilder();
-        }
-
         @Unmodifiable
         @NotNull List<@NotNull Filter> filters();
 

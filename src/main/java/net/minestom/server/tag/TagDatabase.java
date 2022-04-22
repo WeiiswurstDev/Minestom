@@ -26,6 +26,8 @@ public interface TagDatabase {
 
     void update(@NotNull Query query, @NotNull TagHandler handler);
 
+    @NotNull List<@NotNull NBTCompound> find(@NotNull Query query);
+
     <T> void replace(@NotNull Query query, @NotNull Tag<T> tag, @NotNull UnaryOperator<T> operator);
 
     void delete(@NotNull Query query);
@@ -33,8 +35,6 @@ public interface TagDatabase {
     default <T> void replaceConstant(@NotNull Query query, @NotNull Tag<T> tag, @Nullable T value) {
         replace(query, tag, t -> value);
     }
-
-    @NotNull List<@NotNull NBTCompound> find(@NotNull Query query);
 
     default <T> void updateSingle(@NotNull Tag<T> tag, @NotNull T value, @NotNull TagHandler handler) {
         final Query query = new TagDatabaseImpl.Query(List.of(Filter.eq(tag, value)), List.of(), 1);
